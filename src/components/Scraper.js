@@ -108,7 +108,7 @@ const scrapePage = async ($, searchTerm, notify) => {
             }
 
             const ad = new Ad(result)
-            ad.process()
+            await ad.process()
 
             if (ad.valid) {
                 validAds++
