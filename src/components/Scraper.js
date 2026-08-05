@@ -66,12 +66,17 @@ const scraper = async (url) => {
 const scrapePage = async ($, searchTerm, notify) => {
     try {
         const script = $('script[id="__NEXT_DATA__"]').text()
+        let adList
 
-        if (!script) {
-            return false
+        if (script) {
+            adList = JSON.parse(script).props.pageProps.ads
+        } else {
+            const flightScript = $('script:not([src])').toArray()
+                .map(element => $(element).text())
+                .find(script => script.includes('listId'))
+            const payload = JSON.parse(flightScript.match(/^self\.__next_f\.push\((.*)\)\s*$/s)[1])[1]
+            adList = JSON.parse(payload.match(/"ads":(\[.*\]),"searchBoxProps":/s)[1])
         }
-
-        const adList = JSON.parse(script).props.pageProps.ads
 
         if (!Array.isArray(adList) || !adList.length ) {
             return false
@@ -90,7 +95,8 @@ const scrapePage = async ($, searchTerm, notify) => {
             const title = advert.subject
             const id = advert.listId
             const url = advert.url
-            const price = parseInt(advert.price?.replace('R$ ', '')?.replace('.', '') || '0')
+            const rawPrice = advert.price ?? advert.priceValue ?? '0'
+            const price = parseInt(String(rawPrice).replace(/\D/g, '') || '0')
 
             const result = {
                 id,
@@ -102,7 +108,7 @@ const scrapePage = async ($, searchTerm, notify) => {
             }
 
             const ad = new Ad(result)
-            ad.process()
+            await ad.process()
 
             if (ad.valid) {
                 validAds++
